@@ -20,15 +20,22 @@ public class encoder {
     private static byte QOI_OP_LUMA  = (byte)0b10000000;
     private static byte QOI_OP_RUN   = (byte)0b11000000;
     public static void main(String[] args) {
-        if(args.length != 3) {
+        if(args.length != 2) {
             //exit
             System.exit(0);
         } else {
             try {
-                FileWriter output = new FileWriter(args[2]);
+                FileWriter output = new FileWriter(args[1]);
                 //parse png
-                FileWriter input = new FileWriter(args[1]);
-                BufferedImage image = ImageIO.read((ImageInputStream) input);
+                File f = new File(args[0]);
+                if(!f.exists()) {
+                    System.out.print("not there");
+                    System.exit(0);
+                }
+                FileInputStream fis = new FileInputStream(f);
+                BufferedImage image = null;
+                image = new BufferedImage(32, 32,  BufferedImage.TYPE_INT_ARGB);
+                image = ImageIO.read(fis);
                 int width = image.getWidth();
                 int height = image.getHeight();
                 header(output, width, height);
