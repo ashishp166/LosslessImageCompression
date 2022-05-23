@@ -24,7 +24,7 @@ public class Pixel {
     }
 
     public boolean equal(Pixel val) {
-        return this.r == val.r && this.b == val.b && this.g == val.g;
+        return this.getR() == val.getR() && this.getB() == val.getB() && this.getG() == val.getG();
     }
 
     public int getB() {

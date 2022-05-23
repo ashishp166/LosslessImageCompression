@@ -33,17 +33,16 @@ public class encoder {
                     System.exit(0);
                 }
                 FileInputStream fis = new FileInputStream(f);
-                BufferedImage image = null;
-                image = new BufferedImage(32, 32,  BufferedImage.TYPE_INT_ARGB);
-                image = ImageIO.read(fis);
+                BufferedImage image = ImageIO.read(fis);
                 int width = image.getWidth();
                 int height = image.getHeight();
+                System.out.println(width);
                 header(output, width, height);
 
 
                 // arguments for data compression encoding method
                 Pixel[] prevSeenPixel = new Pixel[64];
-                for(int i = 0; i < 63; i++) {
+                for(int i = 0; i < 64; i++) {
                     prevSeenPixel[i] = new Pixel();
                 }
                 Pixel prev = new Pixel();
@@ -51,7 +50,6 @@ public class encoder {
 
                 encoding(image, prevSeenPixel, prev, runlen, width, height, output);
 
-                output.write("Files in Java might be tricky, but it is fun enough!");
                 output.close();
                 System.out.println("Successfully wrote to the file.");
             } catch (IOException e) {
@@ -79,24 +77,26 @@ public class encoder {
             for(int j = 0; j < height; j++) {
                 Color c = new Color(image.getRGB(i, j));
                 Pixel curr = new Pixel(c.getRed(), c.getGreen(), c.getBlue());
-                if(curr.equals(prev)) {
+                if(curr.equal(prev)) {
                     runlen++;
+                    System.out.print("run");
                     //qoi specifies that only show duplicates for max 62
                     if(runlen == 62) {
-                        output.write((byte) QOI_OP_RUN | (runlen - 1));
+                        output.write((byte) (QOI_OP_RUN | (byte)(runlen - 1)));
                         runlen = 0;
                     }
                 } else {
                     //new pixel or we maxed out on prev ones
                     if(runlen > 0) {
-                        output.write((byte) QOI_OP_RUN | (runlen - 1));
+                        output.write((byte) (QOI_OP_RUN | (byte)(runlen - 1)));
                         runlen = 0;
                     }
 
                     // the index was in prevSeenPixel
                     int key = curr.key();
-                    if(curr.equals(prevSeenPixel[key])) {
-                        output.write((byte) QOI_OP_INDEX | key);
+                    if(curr.equal(prevSeenPixel[key])) {
+                        System.out.print("hi");
+                        output.write((byte) (QOI_OP_INDEX | (byte)key));
                     } else {
                         // not in prevSeenPixel or part of run
                         prevSeenPixel[key] = curr;
@@ -109,8 +109,8 @@ public class encoder {
                             output.write((byte) QOI_OP_DIFF | diff.getR() + 2 << 4 | diff.getG() + 2 << 2 | diff.getB() + 2);
                         } else if (-32 <= diff.getG() && diff.getG() <= 31 && -8 <= diffRG && diffRG <= 7 && -8 <= diffBG && diffBG <= 7) {
                             // difference to previous pixel is large
-                            output.write((byte) QOI_OP_LUMA | diff.getG() + 32);
-                            output.write((byte) diffRG + 8 << 4 | diffBG + 8);
+                            output.write((byte) (QOI_OP_LUMA | (byte)(diff.getG() + 32)));
+                            output.write((byte) ((byte)diffRG + 8 << 4 | (byte)diffBG + 8));
                         } else {
                             // write full rgb val
                             output.write((byte) QOI_OP_RGB);
