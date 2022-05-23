@@ -11,8 +11,8 @@ public class test {
     public static void main(String[] args) throws IOException {
         System.out.print("this is pixel class");
         String fileName = "wiggins.png";
-        String outputnorm = "wigginsnorm.png";
-        String outputqoi = "wiggins.qoi";
+        String outputnorm = "wigginscopy.png";
+        String outputqoi = "output.qoi";
         time("encode", fileName, outputnorm, outputqoi, "png");
     }
 
