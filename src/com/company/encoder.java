@@ -29,14 +29,51 @@ public class encoder {
                 //parse png
                 File f = new File(args[0]);
                 if(!f.exists()) {
-                    System.out.print("not there");
+                    System.out.print("file not there");
                     System.exit(0);
                 }
                 FileInputStream fis = new FileInputStream(f);
                 BufferedImage image = ImageIO.read(fis);
                 int width = image.getWidth();
                 int height = image.getHeight();
-                System.out.println(width);
+                header(output, width, height);
+
+
+                // arguments for data compression encoding method
+                Pixel[] prevSeenPixel = new Pixel[64];
+                for(int i = 0; i < 64; i++) {
+                    prevSeenPixel[i] = new Pixel();
+                }
+                Pixel prev = new Pixel();
+                int runlen = 0;
+
+                encoding(image, prevSeenPixel, prev, runlen, width, height, output);
+
+                output.close();
+                System.out.println("Successfully wrote to the file.");
+            } catch (IOException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            }
+        }
+    }
+    public static void benchmark(String[] args) {
+        if(args.length != 2) {
+            //exit
+            System.exit(0);
+        } else {
+            try {
+                FileWriter output = new FileWriter(args[1]);
+                //parse png
+                File f = new File(args[0]);
+                if(!f.exists()) {
+                    System.out.print("file not there");
+                    System.exit(0);
+                }
+                FileInputStream fis = new FileInputStream(f);
+                BufferedImage image = ImageIO.read(fis);
+                int width = image.getWidth();
+                int height = image.getHeight();
                 header(output, width, height);
 
 
@@ -79,7 +116,6 @@ public class encoder {
                 Pixel curr = new Pixel(c.getRed(), c.getGreen(), c.getBlue());
                 if(curr.equal(prev)) {
                     runlen++;
-                    System.out.print("run");
                     //qoi specifies that only show duplicates for max 62
                     if(runlen == 62) {
                         output.write((byte) (QOI_OP_RUN | (byte)(runlen - 1)));
@@ -95,25 +131,19 @@ public class encoder {
                     // the index was in prevSeenPixel
                     int key = curr.key();
                     if(curr.equal(prevSeenPixel[key])) {
-                        System.out.print("hi");
                         output.write((byte) (QOI_OP_INDEX | (byte)key));
                     } else {
                         // not in prevSeenPixel or part of run
                         prevSeenPixel[key] = curr;
-                        Pixel diff = new Pixel(curr.getR() - prev.getR(), curr.getG() - prev.getG(), curr.getB() - prev.getG());
-                        int diffRG = diff.getR() - diff.getG();
-                        int diffBG = diff.getB() - diff.getG();
+                        Pixel diff = curr.sub(prev);
 
                         // small difference between the 2 pixels
-                        if(-2 <= diff.getR()  && diff.getR() <= 1 && -2 <= diff.getG() && diff.getG() <= 1 && -2 <= diff.getB() && diff.getB() <= 1) {
+                        if(smallDifference(diff)) {
                             output.write((byte) QOI_OP_DIFF | diff.getR() + 2 << 4 | diff.getG() + 2 << 2 | diff.getB() + 2);
-                        } else if (-32 <= diff.getG() && diff.getG() <= 31 && -8 <= diffRG && diffRG <= 7 && -8 <= diffBG && diffBG <= 7) {
-                            // difference to previous pixel is large
-                            output.write((byte) (QOI_OP_LUMA | (byte)(diff.getG() + 32)));
-                            output.write((byte) ((byte)diffRG + 8 << 4 | (byte)diffBG + 8));
+                        } else if (bigDifference(diff, output)) {
                         } else {
                             // write full rgb val
-                            output.write((byte) QOI_OP_RGB);
+                            output.write(QOI_OP_RGB);
                             output.write((byte) curr.getR());
                             output.write((byte) curr.getG());
                             output.write((byte) curr.getB());
@@ -123,5 +153,24 @@ public class encoder {
                 prev = curr;
             }
         }
+    }
+
+    public static boolean smallDifference(Pixel diff) {
+        if(-2 <= diff.getR()  && diff.getR() <= 1 && -2 <= diff.getG() && diff.getG() <= 1 && -2 <= diff.getB() && diff.getB() <= 1) {
+            return true;
+        }
+        return false;
+    }
+
+    // difference to previous pixel is large
+    public static boolean bigDifference(Pixel diff, FileWriter output) throws IOException {
+        int diffRG = diff.getR() - diff.getG();
+        int diffBG = diff.getB() - diff.getG();
+        if(-32 <= diff.getG() && diff.getG() <= 31 && -8 <= diffRG && diffRG <= 7 && -8 <= diffBG && diffBG <= 7) {
+            output.write((byte) (QOI_OP_LUMA | (byte)(diff.getG() + 32)));
+            output.write((byte) ((byte)diffRG + 8 << 4 | (byte)diffBG + 8));
+            return true;
+        }
+        return false;
     }
 }
